@@ -55,10 +55,10 @@ private:
 	//! shaders
 	//gl::GlslProgRef					mGlsl;
 
-	ci::SurfaceRef 					mSurface;
+	//ci::SurfaceRef 					mSurface;
 	// warping
 	fs::path		mSettings;
-	gl::TextureRef	mImage;
+	//gl::TextureRef	mImage;
 	WarpList		mWarps;
 	Area			mSrcArea;
 };
@@ -82,17 +82,17 @@ SDAWarpingHydraApp::SDAWarpingHydraApp()
 		mWarps.push_back(WarpPerspectiveBilinear::create());
 	}
 	// load test image
-	try {
-		mImage = gl::Texture::create(loadImage(loadAsset("splash.jpg")), gl::Texture2d::Format().loadTopDown().mipmap(true).minFilter(GL_LINEAR_MIPMAP_LINEAR));
+	//try {
+	//	mImage = gl::Texture::create(loadImage(loadAsset("splash.jpg")), gl::Texture2d::Format().loadTopDown().mipmap(true).minFilter(GL_LINEAR_MIPMAP_LINEAR));
 
-		mSrcArea = mImage->getBounds();
+	//	mSrcArea = mImage->getBounds();
 
-		// adjust the content size of the warps
-		Warp::setSize(mWarps, mImage->getSize());
-	}
-	catch (const std::exception &e) {
-		console() << e.what() << std::endl;
-	}
+	//	// adjust the content size of the warps
+	//	Warp::setSize(mWarps, mImage->getSize());
+	//}
+	//catch (const std::exception &e) {
+	//	console() << e.what() << std::endl;
+	//}
 
 	mFadeInDelay = true;
 	xLeft = 0;
@@ -211,8 +211,8 @@ void SDAWarpingHydraApp::cleanup()
 }
 void SDAWarpingHydraApp::mouseMove(MouseEvent event)
 {
-	mSDASession->setFloatUniformValueByIndex(mSDASettings->IMOUSEX, event.getX());
-	mSDASession->setFloatUniformValueByIndex(mSDASettings->IMOUSEY, event.getY());
+	mSDASession->setFloatUniformValueByIndex(mSDASettings->IMOUSEX, event.getX()/100.0);
+	mSDASession->setFloatUniformValueByIndex(mSDASettings->IMOUSEY, event.getY()/100.0);
 	// hm mSDAAnimation->setVec4UniformValueByIndex(70, vec4(event.getX(), event.getY(), event.isLeftDown(), event.isRightDown()));
 
 	// pass this mouse event to the warp editor first
@@ -278,18 +278,18 @@ void SDAWarpingHydraApp::keyDown(KeyEvent event)
 					// toggle warp edit mode
 					Warp::enableEditMode(!Warp::isEditModeEnabled());
 				}
-				if (isAltDown) {
-					// toggle drawing a random region of the image
-				if (mSrcArea.getWidth() != mImage->getWidth() || mSrcArea.getHeight() != mImage->getHeight())
-					mSrcArea = mImage->getBounds();
-				else {
-					int x1 = Rand::randInt(0, mImage->getWidth() - 150);
-					int y1 = Rand::randInt(0, mImage->getHeight() - 150);
-					int x2 = Rand::randInt(x1 + 150, mImage->getWidth());
-					int y2 = Rand::randInt(y1 + 150, mImage->getHeight());
-					mSrcArea = Area(x1, y1, x2, y2);
-				}
-				}
+				//if (isAltDown) {
+				//	// toggle drawing a random region of the image
+				//if (mSrcArea.getWidth() != mImage->getWidth() || mSrcArea.getHeight() != mImage->getHeight())
+				//	mSrcArea = mImage->getBounds();
+				//else {
+				//	int x1 = Rand::randInt(0, mImage->getWidth() - 150);
+				//	int y1 = Rand::randInt(0, mImage->getHeight() - 150);
+				//	int x2 = Rand::randInt(x1 + 150, mImage->getWidth());
+				//	int y2 = Rand::randInt(y1 + 150, mImage->getHeight());
+				//	mSrcArea = Area(x1, y1, x2, y2);
+				//}
+				//}
 				break;
 
 			case KeyEvent::KEY_c:
@@ -335,10 +335,21 @@ void SDAWarpingHydraApp::draw()
 	Rectf rectangle = Rectf(xLeft, yLeft, xRight, yRight);*/
 	gl::setMatricesWindow(toPixels(getWindowSize()));
 	// iterate over the warps and draw their content
+
 	for (auto &warp : mWarps) {
 		//warp->draw(mSDASession->getHydraTexture(), mSrcArea);	
 		//warp->draw(mSDASession->getMixetteTexture(), mSrcArea);
-		warp->draw(mSDASession->getRenderTexture(), mSrcArea);
+		if (mSDASession->getMode() == 0) warp->draw(mSDASession->getMixetteTexture(), mSrcArea);
+		if (mSDASession->getMode() == 1) warp->draw(mSDASession->getMixTexture(), mSrcArea);
+		if (mSDASession->getMode() == 2) warp->draw(mSDASession->getRenderTexture(), mSrcArea);
+		if (mSDASession->getMode() == 3) warp->draw(mSDASession->getHydraTexture(), mSrcArea);
+		if (mSDASession->getMode() == 4) warp->draw(mSDASession->getFboTexture(0), mSrcArea);
+		if (mSDASession->getMode() == 5) warp->draw(mSDASession->getFboTexture(1), mSrcArea);
+		if (mSDASession->getMode() == 6) warp->draw(mSDASession->getFboTexture(2), mSrcArea);
+		if (mSDASession->getMode() == 7) warp->draw(mSDASession->getFboTexture(3), mSrcArea);
+		if (mSDASession->getMode() == 8) warp->draw(mSDASession->getFboTexture(4), mSrcArea);
+
+
 	}
 
 	if (mSDASettings->mCursorVisible) {
