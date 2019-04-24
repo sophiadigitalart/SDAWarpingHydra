@@ -47,15 +47,13 @@ private:
 	Anim<float>						mRenderWindowTimer;
 	void							positionRenderWindow();
 	bool							mFadeInDelay;
-	bool							mFlipV;
-	bool							mFlipH;
 	int								xLeft, xRight, yLeft, yRight;
 	int								margin, tWidth, tHeight;
 	//! fbos
-	void							renderToFbo();
-	gl::FboRef						mFbo;
+	//void							renderToFbo();
+	//gl::FboRef						mFbo;
 	//! shaders
-	gl::GlslProgRef					mGlsl;
+	//gl::GlslProgRef					mGlsl;
 
 	ci::SurfaceRef 					mSurface;
 	// warping
@@ -85,8 +83,7 @@ SDAWarpingHydraApp::SDAWarpingHydraApp()
 	}
 	// load test image
 	try {
-		mImage = gl::Texture::create(loadImage(loadAsset("splash.jpg")),
-			gl::Texture2d::Format().loadTopDown().mipmap(true).minFilter(GL_LINEAR_MIPMAP_LINEAR));
+		mImage = gl::Texture::create(loadImage(loadAsset("splash.jpg")), gl::Texture2d::Format().loadTopDown().mipmap(true).minFilter(GL_LINEAR_MIPMAP_LINEAR));
 
 		mSrcArea = mImage->getBounds();
 
@@ -98,8 +95,6 @@ SDAWarpingHydraApp::SDAWarpingHydraApp()
 	}
 
 	mFadeInDelay = true;
-	mFlipV = false;
-	mFlipH = true;
 	xLeft = 0;
 	xRight = mSDASettings->mRenderWidth;
 	yLeft = 0;
@@ -112,9 +107,14 @@ SDAWarpingHydraApp::SDAWarpingHydraApp()
 	// fbo
 	gl::Fbo::Format format;
 	//format.setSamples( 4 ); // uncomment this to enable 4x antialiasing
-	mFbo = gl::Fbo::create(mSDASettings->mRenderWidth, mSDASettings->mRenderHeight, format.depthTexture());
 	// shader
-	mGlsl = gl::GlslProg::create(gl::GlslProg::Format().vertex(loadAsset("passthrough.vs")).fragment(loadAsset("post.glsl")));
+	/*mGlsl = gl::GlslProg::create(gl::GlslProg::Format().vertex(loadAsset("passthrough.vs")).fragment(loadAsset("post.glsl")));
+	mFbo = gl::Fbo::create(mSDASettings->mFboWidth, mSDASettings->mFboHeight, format.depthTexture());*/
+	// adjust the content size of the warps
+	Warp::setSize(mWarps, vec2(mSDASettings->mFboWidth, mSDASettings->mFboHeight));
+	mSDASession->setFloatUniformValueByIndex(mSDASettings->IRESX, mSDASettings->mFboWidth);
+	mSDASession->setFloatUniformValueByIndex(mSDASettings->IRESY, mSDASettings->mFboHeight);
+	mSrcArea = Area(0, 0, mSDASettings->mFboWidth, mSDASettings->mFboHeight);
 
 	gl::enableDepthRead();
 	gl::enableDepthWrite();
@@ -139,6 +139,7 @@ void SDAWarpingHydraApp::resize()
 	Warp::handleResize(mWarps);
 }
 // Render into the FBO
+/*
 void SDAWarpingHydraApp::renderToFbo()
 {
 
@@ -169,7 +170,7 @@ void SDAWarpingHydraApp::renderToFbo()
 
 	gl::drawSolidRect(getWindowBounds());
 
-}
+} */
 void SDAWarpingHydraApp::setUIVisibility(bool visible)
 {
 	if (visible)
@@ -191,7 +192,7 @@ void SDAWarpingHydraApp::update()
 		mSDASession->setFloatUniformValueByIndex(mSDASettings->IFPS, getAverageFps());
 		mSDASession->update();
 		// render into our FBO
-		renderToFbo();
+		//renderToFbo();
 	}
 }
 void SDAWarpingHydraApp::cleanup()
@@ -259,59 +260,44 @@ void SDAWarpingHydraApp::keyDown(KeyEvent event)
 	bool isModDown = event.isControlDown();
 #endif
 	bool isShiftDown = event.isShiftDown();
-
-	CI_LOG_V("main keydown: " + toString(event.getCode()) + " ctrl: " + toString(isModDown) + " shift: " + toString(isShiftDown));
+	bool isAltDown = event.isAltDown();
+	CI_LOG_V("main keydown: " + toString(event.getCode()) + " ctrl: " + toString(isModDown) + " shift: " + toString(isShiftDown) + " alt: " + toString(isAltDown));
 
 	// pass this key event to the warp editor first
 	if (!Warp::handleKeyDown(mWarps, event)) {
-		//if (!mSDASession->handleKeyDown(event)) {
-		switch (event.getCode()) {
-		case KeyEvent::KEY_KP_PLUS:
-		case KeyEvent::KEY_DOLLAR:
-		case KeyEvent::KEY_TAB:
-		case KeyEvent::KEY_f:
-			positionRenderWindow();
-			break;
+		if (!mSDASession->handleKeyDown(event)) {
+			switch (event.getCode()) {
+			case KeyEvent::KEY_KP_PLUS:
+			case KeyEvent::KEY_TAB:
+			case KeyEvent::KEY_f:
+				positionRenderWindow();
+				break;
+			case KeyEvent::KEY_w:
+				CI_LOG_V("warp edit mode");
+				if (!isModDown) {
+					// toggle warp edit mode
+					Warp::enableEditMode(!Warp::isEditModeEnabled());
+				}
+				if (isAltDown) {
+					// toggle drawing a random region of the image
+				if (mSrcArea.getWidth() != mImage->getWidth() || mSrcArea.getHeight() != mImage->getHeight())
+					mSrcArea = mImage->getBounds();
+				else {
+					int x1 = Rand::randInt(0, mImage->getWidth() - 150);
+					int y1 = Rand::randInt(0, mImage->getHeight() - 150);
+					int x2 = Rand::randInt(x1 + 150, mImage->getWidth());
+					int y2 = Rand::randInt(y1 + 150, mImage->getHeight());
+					mSrcArea = Area(x1, y1, x2, y2);
+				}
+				}
+				break;
 
-		case KeyEvent::KEY_v:
-			mFlipV = !mFlipV;
-			break;
-		case KeyEvent::KEY_h:
-			mFlipH = !mFlipH;
-			break;
-		case KeyEvent::KEY_w:
-			CI_LOG_V("wsConnect");
-			if (isModDown) {
-				mSDASession->wsConnect();
+			case KeyEvent::KEY_c:
+				// mouse cursor and ui visibility
+				mSDASettings->mCursorVisible = !mSDASettings->mCursorVisible;
+				setUIVisibility(mSDASettings->mCursorVisible);
+				break;
 			}
-			else {
-				// toggle warp edit mode
-				Warp::enableEditMode(!Warp::isEditModeEnabled());
-			}
-			break;
-		case KeyEvent::KEY_r:
-			// toggle drawing a random region of the image
-			if (mSrcArea.getWidth() != mImage->getWidth() || mSrcArea.getHeight() != mImage->getHeight())
-				mSrcArea = mImage->getBounds();
-			else {
-				int x1 = Rand::randInt(0, mImage->getWidth() - 150);
-				int y1 = Rand::randInt(0, mImage->getHeight() - 150);
-				int x2 = Rand::randInt(x1 + 150, mImage->getWidth());
-				int y2 = Rand::randInt(y1 + 150, mImage->getHeight());
-				mSrcArea = Area(x1, y1, x2, y2);
-			}
-			break;
-		case KeyEvent::KEY_c:
-			// mouse cursor and ui visibility
-			mSDASettings->mCursorVisible = !mSDASettings->mCursorVisible;
-			setUIVisibility(mSDASettings->mCursorVisible);
-			break;
-		case KeyEvent::KEY_LEFT:
-			mSDASession->setFloatUniformValueByIndex(mSDASettings->IXFADE, math<float>::max(0.0f, mSDASession->getFloatUniformValueByIndex(mSDASettings->IXFADE) - 0.1f));
-			break;
-		case KeyEvent::KEY_RIGHT:
-			mSDASession->setFloatUniformValueByIndex(mSDASettings->IXFADE, math<float>::min(1.0f, mSDASession->getFloatUniformValueByIndex(mSDASettings->IXFADE) + 0.1f));
-			break;
 		}
 	}
 }
@@ -334,70 +320,62 @@ void SDAWarpingHydraApp::draw()
 		}
 	}
 
-	xLeft = 0;
+	xLeft = mSDASession->getFloatUniformValueByName("iResolutionX") / 3.0f;
 	xRight = mSDASettings->mRenderWidth;
 	yLeft = 0;
 	yRight = mSDASettings->mRenderHeight;
-	if (mFlipV) {
+	/*if (mSDASettings->mFlipV) {
 		yLeft = yRight;
 		yRight = 0;
 	}
-	if (mFlipH) {
+	if (mSDASettings->mFlipH) {
 		xLeft = xRight;
 		xRight = 0;
 	}
-	Rectf rectangle = Rectf(xLeft, yLeft, xRight, yRight);
+	Rectf rectangle = Rectf(xLeft, yLeft, xRight, yRight);*/
 	gl::setMatricesWindow(toPixels(getWindowSize()));
-
+	// iterate over the warps and draw their content
+	for (auto &warp : mWarps) {
+		//warp->draw(mSDASession->getHydraTexture(), mSrcArea);	
+		//warp->draw(mSDASession->getMixetteTexture(), mSrcArea);
+		warp->draw(mSDASession->getRenderTexture(), mSrcArea);
+	}
 
 	if (mSDASettings->mCursorVisible) {
 		gl::ScopedBlendAlpha alpha;
 		gl::enableAlphaBlending();
-		// original
-		gl::draw(mImage, Rectf(0, 0, tWidth, tHeight));
-		gl::drawString("Original", vec2(toPixels(0), toPixels(tHeight)), Color(1, 1, 1), Font("Verdana", toPixels(16)));
-		// flipH
-		gl::draw(mImage, Rectf(tWidth * 2 + margin, 0, tWidth + margin, tHeight));
-		gl::drawString("FlipH", vec2(toPixels(tWidth + margin), toPixels(tHeight)), Color(1, 1, 1), Font("Verdana", toPixels(16)));
-		// flipV
-		gl::draw(mImage, Rectf(0, tHeight * 2 + margin, tWidth, tHeight + margin));
-		gl::drawString("FlipV", vec2(toPixels(0), toPixels(tHeight * 2 + margin)), Color(1, 1, 1), Font("Verdana", toPixels(16)));
-
+		// original MODE_HYDRA = 5
+		gl::draw(mSDASession->getMixetteTexture(), Rectf(0, 0, tWidth, tHeight));
+		gl::drawString("Mixette", vec2(toPixels(xLeft), toPixels(tHeight)), Color(1, 1, 1), Font("Verdana", toPixels(16)));
+		// flipH MODE_IMAGE = 1
+		gl::draw(mSDASession->getRenderTexture(), Rectf(tWidth * 2 + margin, 0, tWidth + margin, tHeight));
+		gl::drawString("Render", vec2(toPixels(xLeft + tWidth + margin), toPixels(tHeight)), Color(1, 1, 1), Font("Verdana", toPixels(16)));
+		// flipV MODE_MIX = 0
+		gl::draw(mSDASession->getMixTexture(), Rectf(0, tHeight * 2 + margin, tWidth, tHeight + margin));
+		gl::drawString("Mix", vec2(toPixels(xLeft), toPixels(tHeight * 2 + margin)), Color(1, 1, 1), Font("Verdana", toPixels(16)));
 		// show the FBO color texture 
-		gl::draw(mFbo->getColorTexture(), Rectf(tWidth + margin, tHeight + margin, tWidth * 2 + margin, tHeight * 2 + margin));
-		gl::drawString("Shader", vec2(toPixels(tWidth + margin), toPixels(tHeight * 2 + margin)), Color(1, 1, 1), Font("Verdana", toPixels(16)));
+		gl::draw(mSDASession->getHydraTexture(), Rectf(tWidth + margin, tHeight + margin, tWidth * 2 + margin, tHeight * 2 + margin));
+		gl::drawString("Hydra", vec2(toPixels(xLeft + tWidth + margin), toPixels(tHeight * 2 + margin)), Color(1, 1, 1), Font("Verdana", toPixels(16)));
 
 
-		gl::drawString("yLeft: " + std::to_string(yLeft), vec2(getWindowWidth() - toPixels(100), getWindowHeight() - toPixels(30)), Color(1, 1, 1), Font("Verdana", toPixels(24)));
+		gl::drawString("irx: " + std::to_string(mSDASession->getFloatUniformValueByName("iResolutionX"))
+			+ " iry: "+ std::to_string(mSDASession->getFloatUniformValueByName("iResolutionY")) 
+			+ " fw: " + std::to_string(mSDASettings->mFboWidth)
+			+ " fh: " + std::to_string(mSDASettings->mFboHeight),
+			vec2(xLeft, getWindowHeight() - toPixels(30)), Color(1, 1, 1),
+			Font("Verdana", toPixels(24)));
 
 	}
-	int i = 0;
-	// iterate over the warps and draw their content
-	for (auto &warp : mWarps) {
-		switch (i)
-		{
-		case 0:
-			warp->draw(mSDASession->getHydraTexture(), mSrcArea);
-			break;
-		case 1:
-			warp->draw(mFbo->getColorTexture(), mSrcArea);
-			break;
-		case 2:
-			warp->draw(mSDASession->getMixTexture(), mSrcArea);
-			break;
-		default:
-			warp->draw(mSDASession->getMixTexture(), mSrcArea);
-			break;
-		}
-		i++;
-	}
+
+
+
 
 	getWindow()->setTitle(mSDASettings->sFps + " fps Hydra");
 }
 
 void prepareSettings(App::Settings *settings)
 {
-	settings->setWindowSize(800, 600);
+	settings->setWindowSize(1280, 720);
 	settings->setConsoleWindowEnabled();
 }
 
