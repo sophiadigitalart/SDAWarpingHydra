@@ -320,7 +320,7 @@ void SDAWarpingHydraApp::draw()
 		}
 	}
 
-	xLeft = mSDASession->getFloatUniformValueByName("iResolutionX") / 3.0f;
+	xLeft = 0;// mSDASession->getFloatUniformValueByName("iResolutionX") / 3.0f;
 	xRight = mSDASettings->mRenderWidth;
 	yLeft = 0;
 	yRight = mSDASettings->mRenderHeight;
