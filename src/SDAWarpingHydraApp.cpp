@@ -61,6 +61,7 @@ private:
 	//gl::TextureRef	mImage;
 	WarpList		mWarps;
 	Area			mSrcArea;
+	int mode;
 };
 
 
@@ -115,7 +116,7 @@ SDAWarpingHydraApp::SDAWarpingHydraApp()
 	mSDASession->setFloatUniformValueByIndex(mSDASettings->IRESX, mSDASettings->mFboWidth);
 	mSDASession->setFloatUniformValueByIndex(mSDASettings->IRESY, mSDASettings->mFboHeight);
 	mSrcArea = Area(0, 0, mSDASettings->mFboWidth, mSDASettings->mFboHeight);
-
+	mode = 0;
 	gl::enableDepthRead();
 	gl::enableDepthWrite();
 #ifdef _DEBUG
@@ -335,20 +336,40 @@ void SDAWarpingHydraApp::draw()
 	Rectf rectangle = Rectf(xLeft, yLeft, xRight, yRight);*/
 	gl::setMatricesWindow(toPixels(getWindowSize()));
 	// iterate over the warps and draw their content
-
+	mode = mSDASession->getMode();
 	for (auto &warp : mWarps) {
-		//warp->draw(mSDASession->getHydraTexture(), mSrcArea);	
-		//warp->draw(mSDASession->getMixetteTexture(), mSrcArea);
-		if (mSDASession->getMode() == 0) warp->draw(mSDASession->getMixetteTexture(), mSrcArea);
-		if (mSDASession->getMode() == 1) warp->draw(mSDASession->getMixTexture(), mSrcArea);
-		if (mSDASession->getMode() == 2) warp->draw(mSDASession->getRenderTexture(), mSrcArea);
-		if (mSDASession->getMode() == 3) warp->draw(mSDASession->getHydraTexture(), mSrcArea);
-		if (mSDASession->getMode() == 4) warp->draw(mSDASession->getFboTexture(0), mSrcArea);
-		if (mSDASession->getMode() == 5) warp->draw(mSDASession->getFboTexture(1), mSrcArea);
-		if (mSDASession->getMode() == 6) warp->draw(mSDASession->getFboTexture(2), mSrcArea);
-		if (mSDASession->getMode() == 7) warp->draw(mSDASession->getFboTexture(3), mSrcArea);
-		if (mSDASession->getMode() == 8) warp->draw(mSDASession->getFboTexture(4), mSrcArea);
+		
+		switch (mode)
+		{
 
+		case 1:
+			warp->draw(mSDASession->getMixTexture(), getWindowBounds());
+			break;
+		case 2:
+			warp->draw(mSDASession->getRenderTexture(), getWindowBounds());
+			break;
+		case 3:
+			warp->draw(mSDASession->getHydraTexture(), getWindowBounds());
+			break;
+		case 4:
+			warp->draw(mSDASession->getFboTexture(0), getWindowBounds());
+			break;
+		case 5:
+			warp->draw(mSDASession->getFboTexture(1), getWindowBounds());
+			break;
+		case 6:
+			warp->draw(mSDASession->getFboTexture(2), getWindowBounds());
+			break;
+		case 7:
+			warp->draw(mSDASession->getFboTexture(3), getWindowBounds());
+			break;
+		case 8:
+			warp->draw(mSDASession->getFboTexture(4), getWindowBounds());
+			break;
+		default:
+			warp->draw(mSDASession->getMixetteTexture(), getWindowBounds());
+			break;
+		}
 
 	}
 
